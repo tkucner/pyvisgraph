@@ -22,7 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
 from __future__ import division
-from math import pi, sqrt, atan, acos
+
+from math import pi, sqrt, atan, acos, isclose
 from pyvisgraph.graph import Point
 
 INF = 10000
@@ -279,7 +280,26 @@ def angle2(point_a, point_b, point_c):
     a = (point_c.x - point_b.x)**2 + (point_c.y - point_b.y)**2
     b = (point_c.x - point_a.x)**2 + (point_c.y - point_a.y)**2
     c = (point_b.x - point_a.x)**2 + (point_b.y - point_a.y)**2
-    cos_value = (a + c - b) / (2 * sqrt(a) * sqrt(c))
+    if a == 0.0 or c == 0.0:
+        cos_value = 0.0
+    else:
+        cos_value = (a + c - b) / (2 * sqrt(a) * sqrt(c))
+    #
+    # if point_b == point_c:
+    #     cos_value=1.0
+
+    if isclose(point_b.x, point_c.x) and isclose(point_b.y, point_c.y):
+        cos_value = 1.0
+
+    # print("+++++++++++")
+    # print(point_a)
+    # print(point_b)
+    # print(point_c)
+    # print(point_b==point_c)
+    # print(cos_value)
+    # print(T)
+    # print(T2)
+    # print(int(cos_value*T)/T2)
     return acos(int(cos_value*T)/T2)
 
 

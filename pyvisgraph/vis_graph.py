@@ -21,16 +21,15 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 """
-from timeit import default_timer
-from sys import stdout, version_info
 from multiprocessing import Pool
-from tqdm import tqdm
-from warnings import warn
+from sys import version_info
 
-from pyvisgraph.graph import Graph, Edge
+from tqdm import tqdm
+
+from pyvisgraph.graph import Graph, Edge, Point
 from pyvisgraph.shortest_path import shortest_path
-from pyvisgraph.visible_vertices import visible_vertices, point_in_polygon
 from pyvisgraph.visible_vertices import closest_point
+from pyvisgraph.visible_vertices import visible_vertices, point_in_polygon
 
 PYTHON3 = version_info[0] == 3
 if PYTHON3:
@@ -42,7 +41,8 @@ else:
 
 class VisGraph(object):
 
-    def __init__(self):
+    def __init__(self, precision=2):
+        self.precision = precision
         self.graph = None
         self.visgraph = None
 
@@ -56,7 +56,10 @@ class VisGraph(object):
         with open(filename, 'wb') as output:
             pickle.dump((self.graph, self.visgraph), output, -1)
 
-    def build(self, input, workers=1, status=True): 
+    def round_point(self, point):
+        return Point(round(point.x, self.precision), round(point.y, self.precision))
+
+    def build(self, input, workers=1, status=True):
         """Build visibility graph based on a list of polygons.
 
         The input must be a list of polygons, where each polygon is a list of
@@ -69,16 +72,20 @@ class VisGraph(object):
         Set status=False to turn off the statusbar when building.
         """
 
+        # round points to desired precision
+        for i, polygon in enumerate(input):
+            input[i] = [self.round_point(point) for point in input[i]]
+
         self.graph = Graph(input)
         self.visgraph = Graph([])
 
         points = self.graph.get_points()
-        batch_size = 10 
+        batch_size = 10
 
         if workers == 1:
             for batch in tqdm([points[i:i + batch_size]
                                for i in xrange(0, len(points), batch_size)],
-                            disable=not status):
+                              disable=not status):
                 for edge in _vis_graph(self.graph, batch):
                     self.visgraph.add_edge(edge)
         else:
@@ -87,7 +94,7 @@ class VisGraph(object):
                        for i in xrange(0, len(points), batch_size)]
 
             results = list(tqdm(pool.imap(_vis_graph_wrapper, batches), total=len(batches),
-                disable=not status))
+                                disable=not status))
             for result in results:
                 for edge in result:
                     self.visgraph.add_edge(edge)
@@ -149,6 +156,7 @@ def _vis_graph_wrapper(args):
         return _vis_graph(*args)
     except KeyboardInterrupt:
         pass
+
 
 def _vis_graph(graph, points):
     visible_edges = []
